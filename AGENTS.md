@@ -45,6 +45,10 @@ Required sections: `## Intent`, `## Acceptance criteria`, `## Out of scope`.
    Phase: tests
    ```
 
+#### Testing conventions
+Tests for commands that read or write files, run git operations, or otherwise touch the filesystem must use pytest's tmp_path fixture for isolation. The subprocess invocation must pass cwd=tmp_path (or equivalent) so the command under test operates inside the temp directory, not the project root.
+Never write tests that operate on the real requirements/ directory or the real git history.
+
 ### Phase 3: Implementation
 1. Write minimal code to make the tests pass.
 2. Every function or class implementing a requirement must have `Implements: REQ-NNN` in its docstring.

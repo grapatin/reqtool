@@ -17,7 +17,8 @@ Bootstrap phase. No features implemented yet. REQ-001 will add `reqtool new`.
 Once there is something to run, install in development mode:
 
 ```
-pip install -e .
+source .venv/bin/activate
+uv pip install -e ".[dev]"
 ```
 
 ## Workflow
