@@ -1,7 +1,7 @@
 ---
 id: REQ-001
 title: Create a new requirement file from the command line
-status: tests-written
+status: implemented
 created: 2026-04-23
 test_file: tests/test_req_001_new_command.py
 depends_on: []
