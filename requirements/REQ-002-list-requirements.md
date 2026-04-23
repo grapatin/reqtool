@@ -1,7 +1,7 @@
 ---
 id: REQ-002
 title: List requirements
-status: tests-written
+status: implemented
 created: "2026-04-23"
 test_file: tests/test_req_002_list_command.py
 depends_on: []

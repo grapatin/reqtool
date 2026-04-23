@@ -1,20 +1,23 @@
 """Entry point for the reqtool CLI.
 
 Implements: REQ-001
+Implements: REQ-002
 """
 from __future__ import annotations
 
 import re
 from datetime import date
-from pathlib import Path
 
 import click
+import yaml
+
+from .registry import iter_req_files, requirements_dir
 
 
 _SLUG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 _MIN_SLUG_LEN = 3
 _MAX_SLUG_LEN = 50
-_REQ_FILENAME_RE = re.compile(r"^REQ-(\d{3})-.*\.md$")
+_REQUIRED_FIELDS = ("id", "title", "status")
 
 
 def _validate_slug(slug):
@@ -47,18 +50,12 @@ def _validate_slug(slug):
     )
 
 
-def _next_req_number(requirements_dir):
+def _next_req_number(directory):
     """Return max(existing REQ-NNN) + 1, or 1 if the directory has no matches.
 
     Implements: REQ-001
     """
-    if not requirements_dir.exists():
-        return 1
-    numbers = [
-        int(m.group(1))
-        for entry in requirements_dir.iterdir()
-        if (m := _REQ_FILENAME_RE.match(entry.name))
-    ]
+    numbers = [n for n, _ in iter_req_files(directory)]
     return max(numbers) + 1 if numbers else 1
 
 
@@ -98,6 +95,26 @@ def _render_file(req_id, title, today_iso):
     )
 
 
+def _parse_frontmatter(path):
+    """Parse YAML frontmatter from a requirement file.
+
+    Returns (frontmatter_dict, None) on success, (None, error_message) on failure.
+
+    Implements: REQ-002
+    """
+    content = path.read_text()
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return None, "missing YAML frontmatter"
+    try:
+        fm = yaml.safe_load(parts[1])
+    except yaml.YAMLError as e:
+        return None, f"malformed YAML: {e}"
+    if not isinstance(fm, dict):
+        return None, "frontmatter is not a mapping"
+    return fm, None
+
+
 @click.group()
 def main():
     """Requirement-driven development CLI.
@@ -114,13 +131,39 @@ def new(slug):
     Implements: REQ-001
     """
     _validate_slug(slug)
-    requirements_dir = Path.cwd() / "requirements"
-    requirements_dir.mkdir(exist_ok=True)
-    req_id = f"REQ-{_next_req_number(requirements_dir):03d}"
+    directory = requirements_dir()
+    directory.mkdir(exist_ok=True)
+    req_id = f"REQ-{_next_req_number(directory):03d}"
     title = _humanize_slug(slug)
-    target = requirements_dir / f"{req_id}-{slug}.md"
+    target = directory / f"{req_id}-{slug}.md"
     target.write_text(_render_file(req_id, title, date.today().isoformat()))
     click.echo(str(target.resolve()))
+
+
+@main.command("list")
+def list_cmd():
+    """List all requirements: one tab-separated line of id, status, title.
+
+    Implements: REQ-002
+    """
+    directory = requirements_dir()
+    entries = []
+    for number, path in iter_req_files(directory):
+        fm, error = _parse_frontmatter(path)
+        if error is not None:
+            click.echo(f"{path.name}: {error}", err=True)
+            continue
+        missing = [f for f in _REQUIRED_FIELDS if f not in fm]
+        if missing:
+            click.echo(
+                f"{path.name}: missing required field(s): {', '.join(missing)}",
+                err=True,
+            )
+            continue
+        entries.append((number, fm["id"], fm["status"], fm["title"]))
+    entries.sort(key=lambda e: e[0])
+    for _, id_, status, title in entries:
+        click.echo(f"{id_}\t{status}\t{title}")
 
 
 if __name__ == "__main__":
