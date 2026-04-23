@@ -1,9 +1,9 @@
 ---
 id: REQ-002
 title: List requirements
-status: draft
+status: tests-written
 created: "2026-04-23"
-test_file: null
+test_file: tests/test_req_002_list_command.py
 depends_on: []
 ---
 
