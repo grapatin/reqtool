@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "reqtool"
+version = "0.0.0"
+description = "A CLI for requirement-driven development: requirements and tests as the primary asset."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[project.scripts]
+reqtool = "reqtool.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reqtool"]
