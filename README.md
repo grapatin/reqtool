@@ -6,11 +6,16 @@ A CLI for managing software requirements as flat markdown files with YAML frontm
 
 Requirements and tests are the primary asset. Code is generated to satisfy them.
 
-Each requirement records the git commit that added its tests and the commits that implemented it. The workflow is: agree on a requirement → write and commit tests → write and commit implementation.
+The workflow is: agree on a requirement → write and commit tests → write and commit implementation. Each commit carries `Requirement: REQ-NNN` and `Phase:` trailers, so the full history of a requirement is one `git log --grep` away.
+
+## Commands
+
+- `reqtool new <slug>` — create a new requirement file in `requirements/` with auto-incremented REQ number.
+- `reqtool list` — list all requirements as tab-separated `id`, `status`, `title`, sorted by numeric ID.
 
 ## Status
 
-Bootstrap phase. No features implemented yet. REQ-001 will add `reqtool new`.
+`reqtool new` and `reqtool list` are implemented. See `requirements/` for the running list of requirements and their statuses.
 
 ## Install (development)
 
