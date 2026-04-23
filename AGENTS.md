@@ -6,6 +6,10 @@ This project uses requirement-driven development. Requirements and their tests a
 
 Do not write implementation code until a requirement exists, has been agreed with the user, and has committed tests.
 
+## Single source of truth
+
+The requirement file is the source of truth for the requirement's description, acceptance criteria, current status, and associated test file. The git history is the source of truth for commit-level details (who changed what, when, and which phase). Do not duplicate git-tracked information into the requirement file.
+
 ## Requirement file format
 
 Requirements live in `requirements/REQ-NNN-slug.md` where NNN is a zero-padded three-digit number. Each file has YAML frontmatter followed by markdown sections.
@@ -13,12 +17,12 @@ Requirements live in `requirements/REQ-NNN-slug.md` where NNN is a zero-padded t
 Required frontmatter fields:
 - `id`: e.g. `REQ-001`
 - `title`: short human-readable title
-- `status`: one of `draft`, `approved`, `tests-written`, `implemented`, `deprecated`
+- `status`: one of `draft`, `tests-written`, `implemented`, `deprecated`
 - `created`: ISO date
 - `test_file`: path to the test file, or null if not yet written
-- `test_commit`: git SHA of the commit that added the tests, or null
-- `impl_commits`: list of git SHAs that implemented the requirement
 - `depends_on`: list of requirement IDs this depends on
+
+Commit history is tracked via git, not in the requirement file. Use the `Requirement:` and `Phase:` trailers in commit messages (see workflow below) and query with `git log --grep="Requirement: REQ-NNN"` to find all commits related to a requirement.
 
 Required sections: `## Intent`, `## Acceptance criteria`, `## Out of scope`.
 
@@ -32,24 +36,26 @@ Required sections: `## Intent`, `## Acceptance criteria`, `## Out of scope`.
 ### Phase 2: Tests
 1. Create `tests/test_req_NNN_<slug>.py` with one test per acceptance criterion. Test function names start with `test_req_NNN_`.
 2. Run the tests and confirm they fail (no implementation yet).
-3. Commit with a message containing these trailers:
+3. Update the requirement file: set `test_file` to the test file path and `status` to `tests-written`.
+4. Commit both the tests and the updated requirement file together with this message:
    ```
+   Add tests for REQ-NNN: <title>
+
    Requirement: REQ-NNN
    Phase: tests
    ```
-4. Record the commit SHA in the requirement's `test_commit` field.
-5. Set `status: tests-written`.
 
 ### Phase 3: Implementation
 1. Write minimal code to make the tests pass.
 2. Every function or class implementing a requirement must have `Implements: REQ-NNN` in its docstring.
-3. Commit with trailers:
+3. Update the requirement file: set `status` to `implemented`.
+4. Commit both the implementation and the updated requirement file together with this message:
    ```
+   Implement REQ-NNN: <title>
+
    Requirement: REQ-NNN
    Phase: implementation
    ```
-4. Append the commit SHA to `impl_commits` in the requirement.
-5. Set `status: implemented`.
 
 ## Lookups
 

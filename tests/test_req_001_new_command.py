@@ -60,12 +60,14 @@ def test_req_001_frontmatter_has_all_required_fields(tmp_path):
         "status",
         "created",
         "test_file",
-        "test_commit",
-        "impl_commits",
         "depends_on",
     ]
     missing = [f for f in required if f not in fm]
     assert missing == [], f"missing frontmatter fields: {missing}"
+    for forbidden in ("test_commit", "impl_commits"):
+        assert forbidden not in fm, (
+            f"generated file should not contain legacy field {forbidden!r}"
+        )
 
 
 def test_req_001_id_matches_filename_number(tmp_path):
@@ -106,8 +108,6 @@ def test_req_001_nullable_and_list_defaults(tmp_path):
         tmp_path / "requirements" / "REQ-001-parse-gpx-header.md"
     )
     assert fm["test_file"] is None
-    assert fm["test_commit"] is None
-    assert fm["impl_commits"] == []
     assert fm["depends_on"] == []
 
 
@@ -162,6 +162,10 @@ def test_req_001_rejects_invalid_slug(tmp_path, bad_slug, category):
     )
     assert result.stderr.strip() != "", (
         f"expected error message on stderr for {category} slug {bad_slug!r}"
+    )
+    assert "Traceback" not in result.stderr, (
+        f"expected a rule-violation message, not a Python traceback, "
+        f"for {category} slug {bad_slug!r}; stderr was:\n{result.stderr}"
     )
     req_dir = tmp_path / "requirements"
     if req_dir.exists():
