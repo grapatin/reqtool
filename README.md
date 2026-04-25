@@ -10,16 +10,24 @@ The workflow is: agree on a requirement → write and commit tests → write and
 
 ## Commands
 
+- `reqtool init` — bootstrap the current directory for the workflow: creates `requirements/`, `tests/`, `AGENTS.md`, and a Claude Code skill at `.claude/skills/reqtool-workflow/SKILL.md`. Existing files are left untouched.
 - `reqtool new <slug>` — create a new requirement file in `requirements/` with auto-incremented REQ number.
 - `reqtool list` — list all requirements as tab-separated `id`, `status`, `title`, sorted by numeric ID.
+- `reqtool show REQ-NNN` — print a requirement file followed by a `## Commits` section listing the git commits that reference it (via `Requirement:` / `Phase:` trailers).
 
-## Status
+## Getting started
 
-`reqtool new` and `reqtool list` are implemented. See `requirements/` for the running list of requirements and their statuses.
+Adopt the workflow in any project with one command:
+
+```
+cd path/to/your/project
+reqtool init
+reqtool new my-first-feature
+```
+
+`reqtool init` is idempotent and never overwrites existing files, so it's safe to re-run.
 
 ## Install (development)
-
-Once there is something to run, install in development mode:
 
 ```
 source .venv/bin/activate
