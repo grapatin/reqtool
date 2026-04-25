@@ -1,7 +1,7 @@
 ---
 id: REQ-003
 title: Initialize a project for requirement-driven development
-status: tests-written
+status: implemented
 created: "2026-04-24"
 test_file: tests/test_req_003_init_command.py
 depends_on: []

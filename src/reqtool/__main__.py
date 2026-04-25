@@ -2,11 +2,13 @@
 
 Implements: REQ-001
 Implements: REQ-002
+Implements: REQ-003
 """
 from __future__ import annotations
 
 import re
 from datetime import date
+from pathlib import Path
 
 import click
 import yaml
@@ -18,6 +20,86 @@ _SLUG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 _MIN_SLUG_LEN = 3
 _MAX_SLUG_LEN = 50
 _REQUIRED_FIELDS = ("id", "title", "status")
+
+
+_AGENTS_TEMPLATE = """\
+# AGENTS.md
+
+This project uses requirement-driven development with [reqtool](https://github.com/grapatin/reqtool).
+
+## Workflow
+
+Follow the three-phase workflow for every change.
+
+### Phase 1: Requirement
+Run `reqtool list` to see existing requirements. Use `reqtool new <slug>` to draft a new one in `requirements/`. Fill in `## Intent`, `## Acceptance criteria`, and `## Out of scope`. Stop and ask the user to approve before proceeding.
+
+### Phase 2: Tests
+Create `tests/test_req_NNN_<slug>.py` with one test per acceptance criterion. Confirm all tests fail (no implementation yet). Update the requirement file: set `test_file` and `status: tests-written`. Commit both with the trailers `Requirement: REQ-NNN` and `Phase: tests`.
+
+### Phase 3: Implementation
+Write minimal code to make the tests pass. Every function or class implementing the requirement must include `Implements: REQ-NNN` in its docstring. Update the requirement file: `status: implemented`. Commit both with the trailers `Requirement: REQ-NNN` and `Phase: implementation`.
+
+## Skill for AI agents
+
+The skill at `.claude/skills/reqtool-workflow/SKILL.md` instructs AI agents (e.g. Claude Code) to follow the three-phase workflow described above. Activate `reqtool-workflow` whenever you are asked to add a feature, fix a bug, or change behaviour in this project.
+
+## Useful commands
+
+- `reqtool new <slug>` — create a new requirement file with the next available REQ number.
+- `reqtool list` — list all requirements as tab-separated id, status, title.
+- `git log --grep="Requirement: REQ-NNN"` — find all commits related to a requirement.
+"""
+
+
+_SKILL_TEMPLATE = """\
+---
+name: reqtool-workflow
+description: "Use this skill when working in a project that follows requirement-driven development with reqtool. The skill instructs the agent to follow a three-phase workflow (requirement, tests, implementation) and to use reqtool commands for managing requirement files. Apply whenever the user asks to add a feature, fix a bug, or change behaviour in such a project."
+---
+
+# Reqtool workflow skill
+
+This project uses requirement-driven development. Requirements and their tests are the primary asset. Code is generated to satisfy them.
+
+## When to use this skill
+
+Activate this skill whenever you are asked to add a feature, fix a bug, or otherwise change the behaviour of this project. Do not write implementation code without first agreeing on a requirement and committing tests.
+
+## Three-phase workflow
+
+For every change, work through the three phases in order. Do not skip phases.
+
+### Phase 1: Requirement
+1. Run `reqtool list` to see existing requirements and their statuses.
+2. Run `reqtool new <slug>` to create a new requirement file. The slug must be lowercase, 3-50 characters, using only letters, digits, and hyphens.
+3. Fill in `## Intent`, `## Acceptance criteria`, and `## Out of scope`.
+4. Stop and ask the user to review the requirement. Do not proceed until they approve.
+
+### Phase 2: Tests
+1. Create `tests/test_req_NNN_<slug>.py` with one test per acceptance criterion. Test function names start with `test_req_NNN_`.
+2. Run the tests and confirm they all fail.
+3. Update the requirement file: set `test_file` and `status: tests-written`.
+4. Commit both the tests and the updated requirement file with the trailers `Requirement: REQ-NNN` and `Phase: tests`.
+
+### Phase 3: Implementation
+1. Write minimal code to make the tests pass.
+2. Every function or class implementing the requirement must include `Implements: REQ-NNN` in its docstring.
+3. Update the requirement file: `status: implemented`.
+4. Commit both the implementation and the updated requirement file with the trailers `Requirement: REQ-NNN` and `Phase: implementation`.
+
+## Useful commands
+
+- `reqtool new <slug>` — create a new requirement file with the next available REQ number.
+- `reqtool list` — list all requirements as tab-separated id, status, title.
+- `git log --grep="Requirement: REQ-NNN"` — find all commits related to a requirement.
+
+## Hard rules
+
+- Never modify implementation without a corresponding requirement and test.
+- Never write tests without an approved requirement.
+- Never invent a REQ number; let `reqtool new` assign it.
+"""
 
 
 def _validate_slug(slug):
@@ -164,6 +246,42 @@ def list_cmd():
     entries.sort(key=lambda e: e[0])
     for _, id_, status, title in entries:
         click.echo(f"{id_}\t{status}\t{title}")
+
+
+@main.command("init")
+def init_cmd():
+    """Initialize the current directory for requirement-driven development.
+
+    Creates `requirements/`, `tests/`, `AGENTS.md`, and a Claude Code skill
+    at `.claude/skills/reqtool-workflow/SKILL.md`. Each artifact is created
+    only if missing; existing files and directories are left untouched.
+
+    Implements: REQ-003
+    """
+    cwd = Path.cwd()
+    artifacts = (
+        ("dir", cwd / "requirements", None),
+        ("dir", cwd / "tests", None),
+        ("file", cwd / "AGENTS.md", _AGENTS_TEMPLATE),
+        (
+            "file",
+            cwd / ".claude" / "skills" / "reqtool-workflow" / "SKILL.md",
+            _SKILL_TEMPLATE,
+        ),
+    )
+    for kind, path, content in artifacts:
+        if path.exists():
+            click.echo(f"Skipped {path} (already exists)")
+            continue
+        try:
+            if kind == "dir":
+                path.mkdir(parents=True)
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content)
+        except OSError as e:
+            raise click.ClickException(f"failed to create {path}: {e}")
+        click.echo(f"Created {path}")
 
 
 if __name__ == "__main__":
