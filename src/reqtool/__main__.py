@@ -3,10 +3,12 @@
 Implements: REQ-001
 Implements: REQ-002
 Implements: REQ-003
+Implements: REQ-004
 """
 from __future__ import annotations
 
 import re
+import subprocess
 from datetime import date
 from pathlib import Path
 
@@ -20,6 +22,7 @@ _SLUG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 _MIN_SLUG_LEN = 3
 _MAX_SLUG_LEN = 50
 _REQUIRED_FIELDS = ("id", "title", "status")
+_REQ_ID_RE = re.compile(r"^REQ-\d{3}$")
 
 
 _AGENTS_TEMPLATE = """\
@@ -297,6 +300,82 @@ def init_cmd():
         except OSError as e:
             raise click.ClickException(f"failed to create {path}: {e}")
         click.echo(f"Created {path}")
+
+
+def _commits_section_lines(req_id):
+    """Return the lines of the `## Commits` section for the given REQ ID.
+
+    Implements: REQ-004
+    """
+    try:
+        rp = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return ["(not a git repository)"]
+    if rp.returncode != 0:
+        return ["(not a git repository)"]
+
+    log = subprocess.run(
+        [
+            "git", "log",
+            "--reverse",
+            "--abbrev=7",
+            "--format=%h%x09%s%x09%(trailers:key=Phase,valueonly)",
+            f"--grep=Requirement: {req_id}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if log.returncode != 0:
+        return ["(none)"]
+
+    lines = []
+    for raw in log.stdout.splitlines():
+        parts = raw.split("\t")
+        if len(parts) < 3:
+            continue
+        sha, subject, phase = parts[0], parts[1], parts[2]
+        phase_value = phase.strip() or "-"
+        lines.append(f"{sha}\t{phase_value}\t{subject}")
+
+    return lines if lines else ["(none)"]
+
+
+@main.command("show")
+@click.argument("req_id")
+def show_cmd(req_id):
+    """Print a requirement file followed by its commit history.
+
+    Implements: REQ-004
+    """
+    if not _REQ_ID_RE.match(req_id):
+        raise click.UsageError(
+            f"argument must be in the form 'REQ-NNN' (literal 'REQ-' "
+            f"followed by exactly three digits); got {req_id!r}"
+        )
+
+    directory = requirements_dir()
+    matches = (
+        sorted(directory.glob(f"{req_id}-*.md")) if directory.exists() else []
+    )
+
+    if len(matches) == 0:
+        raise click.ClickException(f"no requirement file found for {req_id}")
+    if len(matches) > 1:
+        names = "\n".join(f"  {p.name}" for p in matches)
+        raise click.ClickException(
+            f"ambiguous match for {req_id}; multiple files found:\n{names}"
+        )
+
+    path = matches[0]
+    click.echo(path.read_text(), nl=False)
+    click.echo()
+    click.echo("## Commits")
+    for line in _commits_section_lines(req_id):
+        click.echo(line)
 
 
 if __name__ == "__main__":

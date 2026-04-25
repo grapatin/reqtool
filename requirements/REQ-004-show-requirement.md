@@ -1,7 +1,7 @@
 ---
 id: REQ-004
 title: Show a requirement and its commit history
-status: tests-written
+status: implemented
 created: "2026-04-25"
 test_file: tests/test_req_004_show_command.py
 depends_on: []
