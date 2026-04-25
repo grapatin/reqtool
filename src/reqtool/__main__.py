@@ -99,6 +99,21 @@ For every change, work through the three phases in order. Do not skip phases.
 - Never modify implementation without a corresponding requirement and test.
 - Never write tests without an approved requirement.
 - Never invent a REQ number; let `reqtool new` assign it.
+
+## When a bug is found in production
+
+1. Do not fix the code first.
+2. Write a new requirement describing the correct behaviour, or amend the existing requirement if the original was wrong.
+3. Add a failing test for the bug. Commit with `Phase: tests`.
+4. Fix the implementation by making sure all tests pass.
+5. Commit with `Phase: fix` and reference the requirement.
+
+## Lookups
+
+- From code to requirement: grep for `REQ-` in the file, or `git blame` the line and read the commit trailer.
+- From requirement to tests: open the requirement file, read `test_file` in frontmatter.
+- From requirement to commits: `git log --grep="Requirement: REQ-NNN"`
+- Find all code implementing a requirement: `grep -rn "Implements: REQ-NNN" src/`
 """
 
 
